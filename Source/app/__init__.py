@@ -16,17 +16,14 @@ def _svg(svg: str) -> Response:
 def create_app() -> Flask:
     app = Flask(__name__)
 
-    @app.route("/")
-    def home() -> Response:
-        # show the playlist page
-        return _html(make_link_page())
-
     @app.route("/link")
     def link() -> Response:
         return _html(make_link_page())
 
-    @app.route("/widget")
-    def widget() -> Response:
+    # Match upstream: root (and any other path) -> SVG
+    @app.route("/", defaults={"path": ""})
+    @app.route("/<path:path>")
+    def catch_all(path: str) -> Response:
         return _svg(make_svg_widget())
 
     return app
