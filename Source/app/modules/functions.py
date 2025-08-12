@@ -99,17 +99,32 @@ def parse_request_args(request_args: MultiDict) -> ParsedArgs:
 #     )
 
 #     return now_playing_track if now_playing_track else recently_played_track
+
 def get_track(spotify_api: SpotifyAPI) -> Dict[str, Any]:
-    # TEMP: show most recent track from your public playlist
+    """
+    Return a track object from your TEMPLE playlist (public),
+    using client credentials (no refresh token required).
+    """
+    import os, spotipy
     from spotipy.oauth2 import SpotifyClientCredentials
-    import spotipy, os
+
     sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
         client_id=os.environ["CLIENT_ID"],
-        client_secret=os.environ["CLIENT_SECRET"]
+        client_secret=os.environ["CLIENT_SECRET"],
     ))
-    pl = sp.playlist(os.environ["PLAYLIST_ID"])
-    item = (pl["tracks"]["items"] or [{}])[0]
-    return item.get("track", {}) or {}
+
+    playlist_id = os.environ["PLAYLIST_ID"]  # no SPOTIFY_ prefix
+    pl = sp.playlist(playlist_id)  # playlist must be PUBLIC for client-credentials
+
+    items = (pl.get("tracks", {}) or {}).get("items", [])
+    # pick the first valid track in the list
+    for it in items:
+        tr = (it or {}).get("track")
+        if tr:
+            return tr
+
+    return {}  # fallback if playlist is empty
+
 
 
 
@@ -171,26 +186,41 @@ def prepare_widget_template_variables(
     }
 
 
+# def make_svg_widget() -> str:
+#     """Returns the HTML of the widget to be rendered."""
+#     parsed_args = parse_request_args(request.args)
+#     spotify_api = SpotifyAPI(
+#         client_id=ENV_VARS.CLIENT_ID,
+#         client_secret=ENV_VARS.CLIENT_SECRET,
+#         refresh_token=ENV_VARS.REFRESH_TOKEN,
+#     )
+#     template_variables = prepare_widget_template_variables(parsed_args, spotify_api)
+#     return render_template("widget.html", **template_variables)
+
 def make_svg_widget() -> str:
     """Returns the HTML of the widget to be rendered."""
     parsed_args = parse_request_args(request.args)
-    spotify_api = SpotifyAPI(
-        client_id=ENV_VARS.CLIENT_ID,
-        client_secret=ENV_VARS.CLIENT_SECRET,
-        refresh_token=ENV_VARS.REFRESH_TOKEN,
-    )
-    template_variables = prepare_widget_template_variables(parsed_args, spotify_api)
+    # spotify_api no longer needed; get_track ignores its arg
+    template_variables = prepare_widget_template_variables(parsed_args, None)
     return render_template("widget.html", **template_variables)
 
 
+
+# def make_link_page() -> str:
+#     """Returns the HTML of the link page to be rendered."""
+#     spotify_api = SpotifyAPI(
+#         client_id=ENV_VARS.CLIENT_ID,
+#         client_secret=ENV_VARS.CLIENT_SECRET,
+#         refresh_token=ENV_VARS.REFRESH_TOKEN,
+#     )
+#     track = get_track(spotify_api)
+#     track_id = track["id"]
+#     embed_link = f"https://open.spotify.com/embed/track/{track_id}"
+#     return render_template("link.html", embed_link=embed_link)
+
 def make_link_page() -> str:
-    """Returns the HTML of the link page to be rendered."""
-    spotify_api = SpotifyAPI(
-        client_id=ENV_VARS.CLIENT_ID,
-        client_secret=ENV_VARS.CLIENT_SECRET,
-        refresh_token=ENV_VARS.REFRESH_TOKEN,
-    )
-    track = get_track(spotify_api)
-    track_id = track["id"]
-    embed_link = f"https://open.spotify.com/embed/track/{track_id}"
+    """Return the embed page for the TEMPLE playlist."""
+    import os
+    playlist_id = os.environ["PLAYLIST_ID"]
+    embed_link = f"https://open.spotify.com/embed/playlist/{playlist_id}"
     return render_template("link.html", embed_link=embed_link)
