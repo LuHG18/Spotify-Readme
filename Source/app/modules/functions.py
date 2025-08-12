@@ -84,21 +84,33 @@ def parse_request_args(request_args: MultiDict) -> ParsedArgs:
     return ParsedArgs(**parsed_request_args)
 
 
+# def get_track(spotify_api: SpotifyAPI) -> Dict[str, Any]:
+#     """Get the currently playing track."""
+#     now_playing: Dict[str, Any] = spotify_api.make_request(
+#         "me/player/currently-playing"
+#     )
+#     recently_played: Dict[str, Any] = spotify_api.make_request(
+#         "me/player/recently-played?limit=1"
+#     )
+
+#     now_playing_track: Dict[str, Any] | None = now_playing.get("item")
+#     recently_played_track: Dict[str, Any] = recently_played.get("items", [{}])[0].get(
+#         "track"
+#     )
+
+#     return now_playing_track if now_playing_track else recently_played_track
 def get_track(spotify_api: SpotifyAPI) -> Dict[str, Any]:
-    """Get the currently playing track."""
-    now_playing: Dict[str, Any] = spotify_api.make_request(
-        "me/player/currently-playing"
-    )
-    recently_played: Dict[str, Any] = spotify_api.make_request(
-        "me/player/recently-played?limit=1"
-    )
+    # TEMP: show most recent track from your public playlist
+    from spotipy.oauth2 import SpotifyClientCredentials
+    import spotipy, os
+    sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
+        client_id=os.environ["CLIENT_ID"],
+        client_secret=os.environ["CLIENT_SECRET"]
+    ))
+    pl = sp.playlist(os.environ["PLAYLIST_ID"])
+    item = (pl["tracks"]["items"] or [{}])[0]
+    return item.get("track", {}) or {}
 
-    now_playing_track: Dict[str, Any] | None = now_playing.get("item")
-    recently_played_track: Dict[str, Any] = recently_played.get("items", [{}])[0].get(
-        "track"
-    )
-
-    return now_playing_track if now_playing_track else recently_played_track
 
 
 def get_base_64_track_image(track: Dict[str, Any]) -> str:
